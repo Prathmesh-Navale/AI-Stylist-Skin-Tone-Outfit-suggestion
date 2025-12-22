@@ -1,0 +1,9 @@
+Flask
+Flask-SQLAlchemy
+PyMySQL
+bcrypt
+opencv-python-headless
+numpy
+tensorflow-cpu
+mediapipe
+openai
