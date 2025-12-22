@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Skin Tone Outfit Recommender</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #f9fafb;
+  --fg: #1f2937;
+  --accent: #2563eb;
+  --light: #ffffff;
+  --shadow: rgba(0, 0, 0, 0.1);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+/* =====================
+   Navbar
+===================== */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 30px;
+  background: var(--light);
+  box-shadow: 0 2px 6px var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.navbar .nav-links a {
+  margin: 0 12px;
+  text-decoration: none;
+  color: var(--fg);
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.navbar .nav-links a:hover {
+  color: var(--accent);
+}
+
+.theme-btn {
+  background: var(--accent);
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: white;
+}
+
+/* =====================
+   Hero Section
+===================== */
+.hero {
+  text-align: center;
+  padding: 50px 20px;
+  background: linear-gradient(to right, #e0e7ff, #f9fafb);
+}
+
+.hero h1 {
+  font-size: 2rem;
+  margin-bottom: 20px;
+}
+
+.detect-button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  font-size: 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px var(--shadow);
+}
+
+.detect-button:hover {
+  opacity: 0.9;
+}
+
+/* =====================
+   Main Layout
+===================== */
+.main-content {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 20px;
+  padding: 20px;
+}
+
+/* Sidebar Filters */
+#selection-section {
+  background: var(--light);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px var(--shadow);
+  height: fit-content;
+}
+
+#selection-section h3 {
+  margin-bottom: 10px;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tab {
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.tab.active,
+.tab:hover {
+  background: var(--accent);
+  color: white;
+}
+
+
+
+/* =====================
+   Action Buttons
+===================== */
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 30px 0;
+}
+
+.action-buttons button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
+.action-buttons button:hover {
+  opacity: 0.9;
+}
+
+/* =====================
+   Favorites
+===================== */
+#favorites {
+  padding: 30px;
+  background: #f3f4f6;
+  margin-top: 30px;
+  border-radius: 12px;
+}
+
+#favorites h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+#favorites-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+/* =====================
+   About & Contact
+===================== */
+#about, #contact {
+  padding: 40px 20px;
+}
+
+#about h2, #contact h2 {
+  margin-bottom: 15px;
+  font-size: 1.8rem;
+  color: var(--accent);
+}
+
+#about p, #contact p {
+  color: #555;
+  line-height: 1.6;
+}
+
+/* =====================
+   Footer
+===================== */
+.footer {
+  text-align: center;
+  padding: 20px;
+  background: var(--fg);
+  color: white;
+  margin-top: 40px;
+}
+
+/* =====================
+   Chatbot
+===================== */
+#chatbot-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--accent);
+  color: white;
+  padding: 12px 18px;
+  border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px var(--shadow);
+}
+
+#chatbot-box {
+  display: none;
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  width: 320px;
+  background: var(--light);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px var(--shadow);
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+#chat-messages {
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.chat-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.chat-input {
+  display: flex;
+  gap: 5px;
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.send-btn {
+  background: var(--accent);
+  border: none;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* =====================
+   Floating Button
+===================== */
+.floating-btn {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  background: #ff4081;
+  color: white;
+  border: none;
+  padding: 14px 20px;
+  border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 4px 8px var(--shadow);
+}
+
+/* =====================
+   Responsive
+===================== */
+@media (max-width: 1024px) {
+    .grid {
+        grid-template-columns: repeat(2, 1fr); /* 2 per row on tablet */
+    }
+}
+
+@media (max-width: 768px) {
+    .grid {
+        grid-template-columns: 1fr; /* 1 per row on mobile */
+    }
+}
+
+
+/* =====================
+   Products Grid
+===================== */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 cards per row */
+    gap: 25px;
+    flex: 1;
+}
+.grid .card {
+   background: white;
+    border-radius: 15px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: 0.3s;
+    height: 420px; /* Increased from default ~350px */
+}
+
+.grid .card:hover {
+  transform: translateY(-5px);
+}
+
+/* Image inside product card */
+.grid .card img {
+   width: 100%;
+    height:300px; /* Can also increase if needed, e.g., 360px */
+    object-fit: cover;
+    transition: 0.3s;
+}
+.card-content {
+    padding: 20px; /* Increased for better spacing */
+    text-align: center;
+}
+
+/* Text/info below image */
+.grid .card p {
+ font-weight: 600;
+    margin-bottom: 12px;
+    font-size: 1rem;
+}
+
+/* =====================
+   Favorites Grid
+===================== */
+#favorites-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+#favorites-grid .card {
+  background: var(--light);
+  border-radius: 10px;
+  box-shadow: 0 2px 6px var(--shadow);
+  overflow: hidden;
+  text-align: center;
+}
+
+#favorites-grid .card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-bottom: 1px solid #eee;
+}
+
+#favorites-grid .card p {
+  margin: 8px;
+  font-size: 13px;
+  color: #444;
+}
+
+
+/* =====================
+   Advertisement Banner 
+===================== */
+
+.ad-section {
+  position: relative;
+  max-width: 1200px;
+  margin: 30px auto;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+ 
+
+ 
+/* Ad Section */
+.ad-box {
+  width: 100%;
+  max-width: 100vw;
+  margin: 0 auto;
+  text-align: center;
+  padding: 20px;
+  background: white;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.ad-box h2 {
+  font-size: 2rem;
+  margin-bottom: 10px;
+  color: #222;
+}
+
+.ad-box p {
+  font-size: 1.1rem;
+  color: #555;
+  margin-bottom: 15px;
+}
+
+/* Horizontal images container */
+.ad-images {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  overflow-x: auto;   /* scroll on small screens */
+  padding: 10px 0;
+  scroll-snap-type: x mandatory; /* smooth snap */
+}
+
+/* Individual images */
+.ad-images img {
+  width: 250px;        /* set card width */
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+  flex-shrink: 0;      /* prevent shrinking */
+  scroll-snap-align: center;
+  transition: transform 0.3s ease;
+}
+
+.ad-images img:hover {
+  transform: scale(1.05);
+}
+
+/* Filter fixing */
+.filters {
+  position: fixed;      
+  top: 100px;           
+  left: 20px;
+  width: 220px;
+  background: white;
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+  z-index: 1000;
+  height: auto;
+}
+
+ 
+</style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="logo" style="display:flex; align-items:center;">
+      <img src="{{ url_for('static', filename='logo.png') }}" width="70px" height="50px" style="margin-right:10px;">
+      <h2 style="font-family:'Pacifico', cursive; font-size:32px; color:#ff6600; text-shadow:2px 2px 4px rgba(0,0,0,0.3);">
+        GLAMORA
+      </h2>
+    </div>
+
+    <nav class="nav-links">
+      <a href="/">Home</a>
+      <a href="#favorites">Favorites</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+      <a href="/logout">Logout</a>
+      
+    </nav>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1>AI-Powered Skin Tone Outfit Recommender</h1>
+    <button class="detect-button" onclick="detect()">Detect & Recommend</button>
+    <div id="result"></div>
+  </section>
+
+  <!-- Advertisement Section -->
+<div id="ad-section" class="ad-box">
+  <h2>✨ Fashion Trends 2025 ✨</h2>
+  
+  
+  <div class="ad-images">
+    <img src="{{ url_for('static', filename='ads/dom-hill-nimElTcTNyY-unsplash.jpg') }}" alt="Fashion 1">
+    <img src="{{ url_for('static', filename='ads/priscilla-du-preez-dlxLGIy-2VU-unsplash.jpg') }}" alt="Fashion 2">
+    <img src="{{ url_for('static', filename='ads/alireza-dolati-OVS3rqXq9gg-unsplash.jpg') }}" alt="Fashion 3">
+    <img src="{{ url_for('static', filename='ads/ahmed-carter-tiWcNvpQF4E-unsplash.jpg') }}" alt="Fashion 4">
+  </div>
+</div>
+  
+  <!-- Main Content Area (Sidebar + Products Grid) -->
+  <main class="main-content">
+    <!-- Sidebar Filters -->
+    <aside id="selection-section" class="filter">
+      <h3>🎯 Filters</h3>
+
+      <p><strong>Gender</strong></p>
+      <div class="tabs" id="gender-tabs">
+        <div class="tab active" onclick="switchGender('male')">Male</div>
+        <div class="tab" onclick="switchGender('female')">Female</div>
+      </div>
+
+      <p style="margin-top:20px;"><strong>Category</strong></p>
+      <div class="tabs" id="category-tabs">
+        <div class="tab active" onclick="switchCategory('Bussiness_attire')">Business</div>
+        <div class="tab" onclick="switchCategory('Formal_wear')">Formal</div>
+        <div class="tab" onclick="switchCategory('Kurti')">Kurti</div>
+        <div class="tab" onclick="switchCategory('Wedding')">Wedding</div>
+      </div>
+    </aside>
+
+    <!-- Products Grid -->
+    <section class="grid" id="image-grid"></section>
+  </main>
+
+  <!-- Action Buttons -->
+  <div class="action-buttons">
+    <button onclick="detect()">🔄 Detect Again</button>
+    <button onclick="window.scrollTo({top:0, behavior:'smooth'})">⬆ Back to Top</button>
+    <button onclick="document.getElementById('selection-section').scrollIntoView({behavior:'smooth'})">⬅ Filters</button>
+    <button onclick="document.getElementById('favorites').scrollIntoView({behavior:'smooth'})">❤️ Favorites</button>
+  </div>
+
+  <!-- Favorites Section -->
+  <section id="favorites">
+    <h2>💖 My Favorites</h2>
+    <div id="favorites-grid"></div>
+  </section>
+
+  <!-- About & Contact (Stacked like e-commerce info pages) -->
+  <section id="about" style="text-align:center; margin-top:50px;">
+    <h2>About Us</h2>
+    <p style="max-width:700px; margin:auto; color:#555; line-height:1.6;">
+      This AI-powered system detects your skin tone in real-time and recommends the most suitable outfits.
+      Our goal is to blend fashion with technology, helping you look confident and stylish for every occasion.
+    </p>
+  </section>
+
+  <section id="contact" style="text-align:center; margin-top:50px;">
+    <h2>Contact Us</h2>
+    <p>📧 Email: aioutfit@gmail.com</p>
+    <p>📞 Phone: +91-9172814208</p>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    © 2025 AI Outfit Recommender. All Rights Reserved.
+  </footer>
+
+  <!-- Chatbot -->
+  <div id="chatbot-btn" onclick="toggleChat()">💬 Stylist</div>
+  <div id="chatbot-box">
+    <div id="chat-messages"></div>
+    <div class="chat-footer">
+      <select id="language" class="chat-select">
+        <option value="en" selected>English</option>
+        <option value="hi">Hindi</option>
+        <option value="mr">Marathi</option>
+        <option value="ta">Tamil</option>
+      </select>
+      <div class="chat-input">
+        <input type="text" id="userQuery" placeholder="Ask your stylist..."
+               onkeypress="if(event.key==='Enter') sendMessage()"/>
+        <button class="send-btn" onclick="sendMessage()">Send</button>
+        <button onclick="startVoice()" id="micBtn">🎤 Speak</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Virtual Try On Floating Button -->
+  <button id="goTryOn" class="floating-btn">👗 Try On</button>
+
+ 
+
+<script>
+let outfitsData = {};
+let currentGender = 'male';
+let currentCategory = 'Bussiness_attire';
+let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
+
+// Example product-wise shopping links
+const shoppingLinks = {
+  "kurti1.jpg": "https://www.flipkart.com/product1",
+  "kurti2.jpg": "https://www.myntra.com/product2",
+  "formal1.jpg": "https://www.amazon.in/product3",
+  // fallback for categories
+  "Bussiness_attire": "https://www.amazon.in/s?k=business+attire",
+  "Formal_wear": "https://www.myntra.com/formal-wear",
+  "Kurti": "https://www.flipkart.com/search?q=kurti",
+  "Wedding": "https://www.myntra.com/wedding-dresses"
+};
+
+function switchGender(gender) {
+  currentGender = gender;
+  document.querySelectorAll('#gender-tabs .tab').forEach(tab => tab.classList.remove('active'));
+  document.querySelector(`#gender-tabs .tab:nth-child(${gender === 'male' ? 1 : 2})`).classList.add('active');
+  renderImages();
+}
+
+function switchCategory(category) {
+  currentCategory = category;
+  document.querySelectorAll('#category-tabs .tab').forEach(tab => tab.classList.remove('active'));
+  const indexMap = { 'Bussiness_attire':1, 'Formal_wear':2, 'Kurti':3, 'Wedding':4 };
+  document.querySelector(`#category-tabs .tab:nth-child(${indexMap[category]})`).classList.add('active');
+  renderImages();
+}
+
+function renderImages() {
+  const grid = document.getElementById('image-grid');
+  grid.innerHTML = '';
+  if (outfitsData[currentGender] && outfitsData[currentGender][currentCategory]) {
+    outfitsData[currentGender][currentCategory].forEach(img => {
+      const link = shoppingLinks[img] || shoppingLinks[currentCategory];
+      grid.innerHTML += `
+        <div class="card">
+          <img src="/static/${img}" alt="${currentGender} ${currentCategory} Outfit">
+          <p>${currentCategory.replace('_',' ')}</p>
+          <button class="save-btn" style="background:linear-gradient(45deg,#28a745,#218838);" onclick="saveFavorite('${img}')">❤️ Save</button>
+          <a href="${link}" target="_blank">
+            <button class="save-btn" style="background:linear-gradient(45deg,#28a745,#218838);">🛒 Buy Now</button>
+          </a>
+        </div>`;
+    });
+  }
+}
+
+async function detect() {
+   document.getElementById("ad-section").style.display = "none";
+  const res = await fetch('/detect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+  const data = await res.json();
+  outfitsData = { male: data.male_outfits, female: data.female_outfits };
+  document.getElementById('result').innerHTML = `<strong>Detected Skin Tone:</strong> ${data.skin_tone}`;
+  document.getElementById('selection-section').style.display = "block";
+  renderImages();
+}
+
+function saveFavorite(imgPath) {
+  if (!favorites.includes(imgPath)) {
+    favorites.push(imgPath);
+    localStorage.setItem("favorites", JSON.stringify(favorites));
+    renderFavorites();
+  } else {
+    alert("⚠️ Already in Favorites!");
+  }
+}
+
+function removeFavorite(imgPath) {
+  favorites = favorites.filter(fav => fav !== imgPath);
+  localStorage.setItem("favorites", JSON.stringify(favorites));
+  renderFavorites();
+}
+
+
+
+
+function toggleChat() {
+    const box = document.getElementById("chatbot-box");
+    box.style.display = box.style.display === "none" ? "block" : "none";
+}
+
+function startVoice() {
+    var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("Sorry, your browser does not support Speech Recognition.");
+        return;
+    }
+
+    var recognition = new SpeechRecognition();
+    recognition.lang = "en-IN";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.continuous = true;  // ✅ keeps listening until stopped
+
+    var micBtn = document.getElementById("micBtn");
+    micBtn.style.background = "red";
+
+    recognition.start();
+
+    recognition.onresult = function(event) {
+        var transcript = event.results[event.results.length - 1][0].transcript;
+        console.log("Recognized:", transcript);
+        document.getElementById("userQuery").value = transcript;
+    };
+
+    recognition.onerror = function(event) {
+        console.error("Speech Error:", event.error);
+        if (event.error === "no-speech") {
+            alert("⚠️ No speech detected. Please try again.");
+        } else if (event.error === "not-allowed") {
+            alert("⚠️ Microphone access blocked. Please allow mic permission.");
+        } else {
+            alert("⚠️ Error: " + event.error);
+        }
+    };
+
+    recognition.onend = function() {
+        micBtn.style.background = "";
+    };
+}
+
+
+
+
+
+async function sendMessage() {
+    const inputEl = document.getElementById("userQuery");
+    const message = inputEl.value.trim();
+    if (!message) return;
+
+    const lang = document.getElementById("language").value; // get selected language
+
+    const chatMessages = document.getElementById("chat-messages");
+
+    // Append user message
+    chatMessages.innerHTML += `<p><b>You:</b> ${message}</p>`;
+
+    // Clear input
+    inputEl.value = "";
+
+    try {
+        // Send to Flask
+        const response = await fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: message, lang: lang })
+        });
+
+        const data = await response.json();
+
+        // Append bot reply
+        chatMessages.innerHTML += `<p><b>Stylist:</b> ${data.answer}</p>`;
+
+    } catch (err) {
+        chatMessages.innerHTML += `<p><b>Stylist:</b> ⚠️ Error: ${err}</p>`;
+    }
+
+    // ✅ Always auto-scroll after new message
+    const chatBox = document.getElementById("chat-messages");
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+
+
+
+
+
+
+function renderFavorites() {
+  const favSection = document.getElementById("favorites-grid");
+  favSection.innerHTML = '';
+  favorites.forEach(img => {
+    const link = shoppingLinks[img] || shoppingLinks[currentCategory];
+    favSection.innerHTML += `
+      <div class="card">
+        <img src="/static/${img}" alt="Favorite Outfit">
+        <p>Saved Outfit</p>
+        <a href="${link}" target="_blank">
+          <button class="save-btn" style="background:linear-gradient(45deg,#28a745,#218838);">🛒 Buy Now</button>
+        </a>
+        <button class="remove-btn" onclick="removeFavorite('${img}')">❌ Remove</button>
+      </div>`;
+  });
+}
+renderFavorites();
+
+
+
+const goTryOnBtn = document.getElementById('goTryOn');
+goTryOnBtn.onclick = () => {
+  window.location.href = '/virtual'; // Flask route
+};
+
+
+const themeToggle = document.getElementById("theme-toggle");
+    const body = document.body;
+
+    // Load saved theme
+    if (localStorage.getItem("theme") === "dark") {
+      body.classList.add("dark-theme");
+      themeToggle.textContent = "☀";
+    }
+
+    themeToggle.addEventListener("click", () => {
+      body.classList.toggle("dark-theme");
+
+      // Change icon
+      if (body.classList.contains("dark-theme")) {
+        themeToggle.textContent = "☀";
+        localStorage.setItem("theme", "dark");
+      } else {
+        themeToggle.textContent = "🌙";
+        localStorage.setItem("theme", "light");
+      }
+    });
+
+
+
+function closeAd() {
+  document.getElementById("ad-section").style.display = "none";
+  document.getElementById("selection-section").style.display = "block"; // show filters after ad
+}
+
+
+ 
+  // List of images in your static/ads folder
+  const images = [
+    "{{ url_for('static', filename='ads/dom-hill-nimElTcTNyY-unsplash.jpg') }}",
+    "{{ url_for('static', filename='ads/priscilla-du-preez-dlxLGIy-2VU-unsplash.jpg') }}",
+    "{{ url_for('static', filename='ads/alireza-dolati-OVS3rqXq9gg-unsplash.jpg') }}",
+    "{{ url_for('static', filename='ads/ahmed-carter-tiWcNvpQF4E-unsplash.jpg') }}",
+    "{{ url_for('static', filename='ads/alyssa-strohmann-TS--uNw-JqE-unsplash') }}",
+    "{{ url_for('static', filename='ads/freestocks-_3Q3tsJ01nc-unsplash.jpg') }}",
+    "{{ url_for('static', filename='ads/katsiaryna-endruszkiewicz-BteCp6aq4GI-unsplash.jpg') }}"
+  ];
+
+  let index = 0;
+  const adImage = document.getElementById("ad-image");
+
+  setInterval(() => {
+    index = (index + 1) % images.length; // loop back after last image
+    adImage.src = images[index];
+  }, 4000); // 4000ms = 4 seconds
+ 
+
+
+</script>
+</body>
+</html>
