@@ -4,7 +4,6 @@ PyMySQL
 bcrypt
 opencv-python-headless
 numpy
-tensorflow-cpu
 mediapipe
 openai
 tensorflow==2.15.0
