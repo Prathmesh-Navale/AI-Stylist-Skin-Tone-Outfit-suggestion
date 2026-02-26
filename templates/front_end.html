@@ -371,7 +371,7 @@ body {
 #favorites-grid .card p {
   margin: 8px;
   font-size: 13px;
-  color: #444;
+  color: #444444;
 }
 
 
@@ -626,11 +626,11 @@ function renderImages() {
         <div class="card">
           <img src="/static/${img}" alt="${currentGender} ${currentCategory} Outfit">
           <p>${currentCategory.replace('_',' ')}</p>
-          <button class="save-btn" style="background:linear-gradient(45deg,#28a745,#218838);" onclick="saveFavorite('${img}')">❤️ Save</button>
+          <button class="save-btn" style="background:linear-gradient(45deg, #ffc107, #e0a800);" onclick="saveFavorite('${img}')">❤️ Save</button>
           <a href="${link}" target="_blank">
-            <button class="save-btn" style="background:linear-gradient(45deg,#28a745,#218838);">🛒 Buy Now</button>
+            <button class="save-btn" style="background:linear-gradient(45deg, #ffc107, #e0a800);">🛒 Buy Now</button>
           </a>
-        </div>`;
+        </div>`; 
     });
   }
 }

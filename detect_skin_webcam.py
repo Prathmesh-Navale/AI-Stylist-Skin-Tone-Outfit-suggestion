@@ -1,197 +1,120 @@
 import os
-import random
 import cv2
 import numpy as np
 
-# --- CONFIGURATION ---
-# If False, we won't even try to load the heavy ML libraries
-TRY_AI_MODELS = True 
-_MODEL_PATH = "skin_tone_model.h5"
+# ---------------- CONFIG ----------------
+TRY_AI_MODELS = True
+MODEL_PATH = "skin_tone_model.h5"
 CLASSES = ["fair", "brown", "black"]
 
-# --- GLOBAL VARS ---
-_MODEL = None
-mp_face_detection = None
+MODEL = None
 USE_MEDIAPIPE = False
 
-# --- 1. ROBUST IMPORT BLOCK ---
+# ---------------- SAFE IMPORTS ----------------
+TF_AVAILABLE = False
 try:
-    # A. Try Loading TensorFlow
     if TRY_AI_MODELS:
+        from tensorflow.keras.models import load_model
+        from tensorflow.keras.preprocessing.image import img_to_array
+        TF_AVAILABLE = True
+except:
+    print("⚠️ TensorFlow not available")
+
+try:
+    import mediapipe as mp
+    if hasattr(mp, "solutions"):
+        mp_face = mp.solutions.face_detection
+        USE_MEDIAPIPE = True
+except:
+    print("⚠️ MediaPipe not available")
+
+# ---------------- LOAD MODEL ONCE ----------------
+def load_model_once():
+    global MODEL
+    if MODEL is None and TF_AVAILABLE and os.path.exists(MODEL_PATH):
         try:
-            from tensorflow.keras.models import load_model
-            from tensorflow.keras.preprocessing.image import img_to_array
-            TF_AVAILABLE = True
-        except ImportError:
-            print("⚠️ TensorFlow not found. AI prediction disabled.")
-            TF_AVAILABLE = False
-    
-    # B. Try Loading MediaPipe (Safe Import)
-    try:
-        import mediapipe as mp
-        # Explicitly check if 'solutions' exists to catch the exact error you had
-        if hasattr(mp, 'solutions'):
-            mp_face_detection = mp.solutions.face_detection
-            USE_MEDIAPIPE = True
-            print("✅ MediaPipe loaded successfully.")
-        else:
-            print("⚠️ MediaPipe installed, but 'solutions' missing. (Check for file naming conflicts)")
-            USE_MEDIAPIPE = False
-    except ImportError:
-        print("⚠️ MediaPipe library not found.")
-        USE_MEDIAPIPE = False
-        
-except Exception as e:
-    print(f"❌ critical import error: {e}")
-    TF_AVAILABLE = False
-    USE_MEDIAPIPE = False
+            MODEL = load_model(MODEL_PATH)
+            print("✅ Model Loaded")
+        except:
+            MODEL = None
 
-def _load_model_once():
-    global _MODEL
-    if _MODEL is None and TF_AVAILABLE:
-        if os.path.exists(_MODEL_PATH):
-            try:
-                _MODEL = load_model(_MODEL_PATH)
-                print("✅ AI Model loaded.")
-            except:
-                _MODEL = None
-        else:
-            print("⚠️ Model file not found. Using Math Fallback.")
-
-def normalize_lighting(image):
-    """Simple lighting correction."""
+# ---------------- LIGHT NORMALIZATION ----------------
+def normalize_lighting(img):
     try:
-        lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
         l, a, b = cv2.split(lab)
-        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
-        cl = clahe.apply(l)
-        limg = cv2.merge((cl, a, b))
-        return cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+        cl = cv2.createCLAHE(3.0, (8, 8)).apply(l)
+        return cv2.cvtColor(cv2.merge((cl, a, b)), cv2.COLOR_LAB2BGR)
     except:
-        return image
+        return img
 
+# ---------------- MAIN FUNCTION ----------------
 def detect_skin_tone():
-    """
-    Main function called by Flask.
-    Features:
-    1. Opens Camera
-    2. Uses MediaPipe (if working) OR Static Box (fallback)
-    3. Uses AI Model (if loaded) OR Brightness Math (fallback)
-    """
-    _load_model_once()
-    
-    print("📷 Opening Webcam...")
+    load_model_once()
+
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
-        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW) # Windows fallback
-        
+        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     if not cap.isOpened():
-        print("❌ Camera failed to open.")
-        return "brown" # Default fallback
+        return "brown"
 
+    face_detector = mp_face.FaceDetection(0.6) if USE_MEDIAPIPE else None
     face_crop = None
-    
-    # If MediaPipe is broken, we define a static center box
-    center_box_color = (0, 255, 255) # Yellow
-
-    # If MediaPipe works, initialize it
-    face_detector = None
-    if USE_MEDIAPIPE:
-        face_detector = mp_face_detection.FaceDetection(min_detection_confidence=0.6)
-
-    print("👉 PRESS 'q' TO CAPTURE.")
 
     while True:
         ret, frame = cap.read()
-        if not ret: break
+        if not ret:
+            break
 
         frame = cv2.flip(frame, 1)
         h, w, _ = frame.shape
-        display_frame = frame.copy()
+        display = frame.copy()
 
-        # --- LOGIC BRANCH: SMART DETECT vs SIMPLE BOX ---
-        if USE_MEDIAPIPE and face_detector:
-            # 1. SMART MODE
+        if face_detector:
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = face_detector.process(rgb)
-            
+
             if results.detections:
-                for detection in results.detections:
-                    bboxC = detection.location_data.relative_bounding_box
-                    x = int(bboxC.xmin * w)
-                    y = int(bboxC.ymin * h)
-                    wb = int(bboxC.width * w)
-                    hb = int(bboxC.height * h)
-                    cv2.rectangle(display_frame, (x, y), (x + wb, y + hb), (0, 255, 0), 2)
-                    cv2.putText(display_frame, "Face Detected (Press Q)", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 2)
-            else:
-                cv2.putText(display_frame, "Looking for face...", (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
+                d = results.detections[0]
+                b = d.location_data.relative_bounding_box
+                x, y = int(b.xmin * w), int(b.ymin * h)
+                bw, bh = int(b.width * w), int(b.height * h)
+                cv2.rectangle(display, (x, y), (x+bw, y+bh), (0,255,0), 2)
         else:
-            # 2. FALLBACK MODE (Static Box)
-            # Draw a box in the middle of the screen
-            box_size = 200
-            x1 = (w // 2) - (box_size // 2)
-            y1 = (h // 2) - (box_size // 2)
-            x2 = x1 + box_size
-            y2 = y1 + box_size
-            
-            cv2.rectangle(display_frame, (x1, y1), (x2, y2), center_box_color, 2)
-            cv2.putText(display_frame, "Place face in box & Press Q", (x1 - 20, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, center_box_color, 2)
+            s = 200
+            x, y = w//2 - s//2, h//2 - s//2
+            cv2.rectangle(display, (x,y), (x+s,y+s), (0,255,255), 2)
 
-        cv2.imshow("Skin Tone Detector", display_frame)
+        cv2.imshow("Skin Tone Detector", display)
 
-        # CAPTURE LOGIC
         if cv2.waitKey(1) & 0xFF == ord('q'):
-            if USE_MEDIAPIPE and face_detector and results.detections:
-                # Crop Smart
-                detection = results.detections[0]
-                bboxC = detection.location_data.relative_bounding_box
-                x = int(bboxC.xmin * w)
-                y = int(bboxC.ymin * h)
-                wb = int(bboxC.width * w)
-                hb = int(bboxC.height * h)
-                # Safety padding
-                x, y = max(0, x), max(0, y)
-                face_crop = frame[y:y+hb, x:x+wb]
+            if face_detector and results.detections:
+                face_crop = frame[y:y+bh, x:x+bw]
             else:
-                # Crop Simple (Center)
-                box_size = 200
-                x1 = (w // 2) - (box_size // 2)
-                y1 = (h // 2) - (box_size // 2)
-                x1, y1 = max(0, x1), max(0, y1)
-                face_crop = frame[y1:y1+box_size, x1:x1+box_size]
+                face_crop = frame[y:y+s, x:x+s]
             break
 
-    # CLEANUP
     cap.release()
     cv2.destroyAllWindows()
-    if USE_MEDIAPIPE and face_detector:
+    if face_detector:
         face_detector.close()
 
     if face_crop is None or face_crop.size == 0:
         return "brown"
 
-    # --- ANALYSIS ---
-    try:
-        corrected = normalize_lighting(face_crop)
+    face = normalize_lighting(face_crop)
 
-        # Plan A: AI Model
-        if _MODEL is not None:
-            img = cv2.resize(corrected, (150, 150))
-            arr = img_to_array(img) / 255.0
-            arr = np.expand_dims(arr, axis=0)
-            preds = _MODEL.predict(arr)
-            return CLASSES[preds.argmax(axis=1)[0]]
+    # -------- AI MODE --------
+    if MODEL is not None:
+        img = cv2.resize(face, (150,150))
+        arr = img_to_array(img) / 255.0
+        arr = np.expand_dims(arr, 0)
+        return CLASSES[MODEL.predict(arr).argmax()]
 
-        # Plan B: Math Fallback
-        hsv = cv2.cvtColor(corrected, cv2.COLOR_BGR2HSV)
-        brightness = np.mean(hsv[:, :, 2])
-        print(f"Calculated Brightness: {brightness}")
-        
-        if brightness > 140: return "fair"
-        if brightness < 90: return "black"
-        return "brown"
+    # -------- MATH FALLBACK --------
+    hsv = cv2.cvtColor(face, cv2.COLOR_BGR2HSV)
+    brightness = np.mean(hsv[:,:,2])
 
-    except Exception as e:
-        print(f"Analysis failed: {e}")
-        return "brown"
+    if brightness > 140: return "fair"
+    if brightness < 90: return "black"
+    return "brown"

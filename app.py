@@ -56,11 +56,6 @@ with app.app_context():
         # Print server-side for debugging; avoid leaking details to users
         print("DB init error:", e)
 
-
-# ========================
-# Helpers (ML glue)
-# ========================
-
 def process_skin_tone_and_recommend():
     """Capture/predict skin tone and return structured outfit suggestions."""
     skin_tone = detect_skin_tone()  # from detect_skin_webcam.py
