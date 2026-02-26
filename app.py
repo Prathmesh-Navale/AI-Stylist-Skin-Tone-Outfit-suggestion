@@ -22,7 +22,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
     "DATABASE_URL",
     "mysql+pymysql://root:Kallu%40111@127.0.0.1:3307/k310",
 )
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = True
 
 # Initialize DB
 db = SQLAlchemy(app)
